@@ -9,16 +9,9 @@
     gzip
     gnutar
     xz
-
-    google-chrome
-
-    kitty
-
+    gnumake
     net-tools
-
     btop
-
     tmux
-
   ];
 }

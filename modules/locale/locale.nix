@@ -1,6 +1,4 @@
 {
-  time.timeZone = "Asia/Kolkata";
-
   i18n.defaultLocale = "en_IN";
 
   i18n.extraLocaleSettings = {
