@@ -30,6 +30,8 @@
 
     ../../modules/nix/settings.nix
     ../../modules/nix/nixpkgs.nix
+
+    ../../modules/services/github-runner.nix
   ];
 
   networking.hostName = "eplaplin";
