@@ -16,6 +16,7 @@
     ../../modules/desktop/hyprland.nix
 
     ../../modules/development/docker.nix
+    ../../modules/development/direnv.nix
     ../../modules/development/nix-ld.nix
 
     ../../modules/packages/cli.nix
