@@ -6,14 +6,27 @@
   };
 
   outputs = { self, nixpkgs }:
-  {
-    nixosConfigurations.laptop =
-      nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+    in
+    {
+      formatter.${system} = pkgs.nixpkgs-fmt;
 
-        modules = [
-          ./hosts/laptop/configuration.nix
+      devShells.${system}.default = pkgs.mkShell {
+        packages = with pkgs; [
+          nil
+          nixpkgs-fmt
         ];
       };
-  };
+
+      nixosConfigurations.laptop =
+        nixpkgs.lib.nixosSystem {
+          inherit system;
+
+          modules = [
+            ./hosts/laptop/configuration.nix
+          ];
+        };
+    };
 }
