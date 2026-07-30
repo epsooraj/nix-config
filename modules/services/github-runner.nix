@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 {
   services.github-runners = {
@@ -14,36 +14,63 @@
 
       extraLabels = [ "self-hosted" "linux" ];
 
-      # The runner is a hardened systemd unit: it does NOT inherit the login
+      # Take over a registration of the same name instead of failing with
+      # "A runner exists with the same name". Without this, any crash that
+      # leaves a stale registration on GitHub blocks every future start.
+      replace = true;
+
+      # The runner is a hardened systemd unit and does NOT inherit the login
       # shell's PATH, so `environment.systemPackages` is invisible to it.
-      # Anything a workflow shells out to has to be listed here.
-      #
-      #   docker            — Django/Integration Tests use a Postgres service
-      #                       container; without it the job dies in 10s with
-      #                       "docker: command not found"
-      #   curl, uv          — the API Contract workflow's schema check
-      #   git               — actions/checkout falls back to the REST API
-      #                       without it, which breaks on large repos
-      #   nodejs            — frontend jobs
-      #   gnutar, gzip, zstd — actions/cache and artifact up/download
+      # Anything a workflow shells out to must be listed here.
+      # GitHub-hosted runners are full Ubuntu images; actions and setup-*
+      # scripts freely assume a standard userland exists. A NixOS service unit
+      # has almost none of it, so rather than discover the list one CI failure
+      # at a time, provide the base toolkit up front.
       extraPackages = with pkgs; [
-        docker
+        # what our own workflows invoke
+        docker          # Postgres service containers (Django/Integration Tests)
         curl
         uv
         git
         nodejs
-        gnutar
-        gzip
-        zstd
+        python3         # .github/codeql/summarize_sarif.py
+
+        # standard userland the actions themselves shell out to
         bash
         coreutils
+        gawk            # setup-uv parses libc detection with awk
+        gnused
+        gnugrep
+        findutils
+        diffutils
+        which
+        glibc.bin       # provides `ldd`, used to detect glibc vs musl
+        file
+        procps
+
+        # archive tools for actions/cache and up/download-artifact
+        gnutar
+        gzip
+        xz
+        zstd
+        unzip
+        bzip2
       ];
 
-      # The module defaults to DynamicUser, so the runner is an ephemeral user
-      # that is not in the `docker` group. Without this it would reach the
-      # docker binary and then fail on /var/run/docker.sock with EACCES —
-      # a different error, same dead job.
-      serviceOverrides.SupplementaryGroups = [ "docker" ];
+      serviceOverrides = {
+        # DynamicUser means the runner is an ephemeral user that is not in the
+        # `docker` group; without this it finds the binary and then fails on
+        # /var/run/docker.sock.
+        SupplementaryGroups = [ "docker" ];
+
+        # The module hardens /proc so only the runner's own PID is visible.
+        # The Actions runner reads /proc/1/cgroup to detect whether it is
+        # itself containerised before setting up the network for service
+        # containers; blinded, it yields "Value cannot be null. (Parameter
+        # 'network')". Relax both so job containers can be networked.
+        ProcSubset = lib.mkForce "all";
+        ProtectProc = lib.mkForce "default";
+      };
     };
   };
 }
