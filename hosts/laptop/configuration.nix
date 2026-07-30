@@ -22,6 +22,7 @@
     ../../modules/packages/cli.nix
     ../../modules/packages/gui.nix
     ../../modules/packages/development.nix
+    ../../modules/packages/ai.nix
 
     ../../modules/users/ep.nix
 

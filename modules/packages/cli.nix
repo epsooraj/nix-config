@@ -13,6 +13,6 @@
     net-tools
     btop
     tmux
-    nixpkgs.impala
+    impala
   ];
 }
