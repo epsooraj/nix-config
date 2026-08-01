@@ -1,11 +1,39 @@
 { config, lib, pkgs, ... }:
 
 {
+  # The runner gets a real, static account rather than a systemd DynamicUser.
+  #
+  # DynamicUser uids exist only in systemd's transient userdb and are resolved
+  # through nss-systemd. When that lookup stops working the uid has no passwd
+  # entry, and anything calling getpwuid() breaks — OpenSSH aborts on startup
+  # with "No user exists for uid <n>" before it even looks at its arguments.
+  # That took down the production deploy on 2026-08-01: every ssh-keygen exited
+  # non-zero regardless of input, and the workflow's key check reported a
+  # perfectly good RELEASE_SSH_KEY as malformed for an afternoon.
+  #
+  # A static account also gives the runner a passwd home that matches $HOME.
+  # Under DynamicUser they differed, which is why ssh expanded `~` to a
+  # different directory than bash did and the deploy had to be given absolute
+  # identity paths.
+  users.groups.github-runner = { };
+
+  users.users.github-runner = {
+    isSystemUser = true;
+    group = "github-runner";
+    home = "/var/lib/github-runner";
+    createHome = true;
+  };
+
   services.github-runners = {
     # You can define multiple distinct runners here
     bitsreef-github-runner = {
       enable = true;
       name = "bitsreef-github-runner";
+
+      # Without this the module falls back to a systemd DynamicUser. See the
+      # note on users.users.github-runner above for why that is not acceptable
+      # for a release path.
+      user = "github-runner";
 
       tokenFile = "/var/lib/github-runner-token";
 
@@ -35,6 +63,14 @@
         nodejs
         python3         # .github/codeql/summarize_sarif.py
 
+        # infra/deploy.sh — the production release path. Every external command
+        # it invokes was enumerated from the source; these are the ones not
+        # already covered above or by a guarded fallback in the script.
+        openssh         # ssh + scp — deploy.sh reaches both nodes over SSH
+        util-linux      # uuidgen (the tooling now falls back, but don't rely on it)
+        jq              # the workflow installs it too; this removes the dependency
+        gettext         # envsubst — deploy.sh has a fallback, but prefer the real one
+
         # standard userland the actions themselves shell out to
         bash
         coreutils
@@ -58,9 +94,8 @@
       ];
 
       serviceOverrides = {
-        # DynamicUser means the runner is an ephemeral user that is not in the
-        # `docker` group; without this it finds the binary and then fails on
-        # /var/run/docker.sock.
+        # The runner account is not in the `docker` group; without this it
+        # finds the binary and then fails on /var/run/docker.sock.
         SupplementaryGroups = [ "docker" ];
 
         # The module hardens /proc so only the runner's own PID is visible.
