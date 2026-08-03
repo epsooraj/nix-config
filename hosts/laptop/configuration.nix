@@ -14,6 +14,7 @@
     ../../modules/hardware/printing.nix
 
     ../../modules/desktop/hyprland.nix
+    ../../modules/desktop/fonts.nix
 
     ../../modules/development/docker.nix
     ../../modules/development/direnv.nix
