@@ -7,7 +7,6 @@
     description = "Sooraj Ep";
 
     extraGroups = [
-      "networkmanager"
       "wheel"
       "docker"
     ];

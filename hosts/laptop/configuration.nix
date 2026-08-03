@@ -6,7 +6,7 @@
 
     ../../modules/boot/systemd-boot.nix
 
-    ../../modules/networking/networkmanager.nix
+    ../../modules/networking/iwd.nix
     ../../modules/networking/openssh.nix
 
     ../../modules/hardware/nvidia.nix
